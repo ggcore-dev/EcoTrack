@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EcoTrack — Su ve Enerji Tasarruf Takibi</title>
+  <meta name="description" content="EcoTrack ile su ve elektrik tüketimini takip et, tasarruf hedefleri belirle ve günlük çevre dostu görevleri tamamla. Ücretsiz, hesapsız, verilerin sende kalır.">
+  <meta name="theme-color" content="#14532d">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    /* Tema titremesini önlemek için erken uygula (hata olursa sessizce geç). */
+    (function () {
+      try {
+        var raw = localStorage.getItem('ecotrack:v1');
+        var pref = raw ? (JSON.parse(raw).settings || {}).theme : null;
+        var dark = pref === 'dark' || ((!pref || pref === 'system') && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body>
+  <!-- SVG ikon seti (yerel, harici bağımlılık yok) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <symbol id="i-logo" viewBox="0 0 32 32"><path d="M16 3C9 9 6 14 6 19a10 10 0 0 0 20 0c0-5-3-10-10-16z" fill="currentColor" opacity=".18"/><path d="M16 3C9 9 6 14 6 19a10 10 0 0 0 20 0c0-5-3-10-10-16z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M16 27V14m0 6 5-5m-5 2-4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></symbol>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+      <symbol id="i-menu" viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
+      <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+      <symbol id="i-water" viewBox="0 0 24 24"><path d="M12 2.5s6 6.2 6 10.5a6 6 0 0 1-12 0C6 8.7 12 2.5 12 2.5z"/></symbol>
+      <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>
+      <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M20 4C10 4 4 9 4 15c0 2 1 4 3 5 0-5 3-9 9-11-4 3-6 6-6.5 11C15 19 20 14 20 4z"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14M10 11v6M14 11v6"/></symbol>
+      <symbol id="i-edit" viewBox="0 0 24 24"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7 10l5 5 5-5M4 21h16"/></symbol>
+      <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3M7 8l5-5 5 5M4 21h16"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+      <symbol id="i-walk" viewBox="0 0 24 24"><circle cx="13" cy="4.5" r="2"/><path d="M12 8l-3 4 3 2v6M12 8l3 3h3M9 12l-3 1M12 14l3 6"/></symbol>
+      <symbol id="i-recycle" viewBox="0 0 24 24"><path d="M7 19H4l3-5M7 19l-2-3.5M17 5l3 5h-3M10 5h4l2 3M14 19h-4l-2-3M5 11l2-4 2 3"/></symbol>
+    </defs>
+  </svg>
+
+  <a class="skip-link" href="#main">Ana içeriğe geç</a>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="#home" data-route="home" aria-label="EcoTrack ana sayfa">
+        <svg class="icon brand-icon" aria-hidden="true"><use href="#i-logo"/></svg>
+        <span>EcoTrack</span>
+      </a>
+
+      <nav id="mainNav" class="main-nav" aria-label="Ana gezinme">
+        <ul>
+          <li><a href="#home" data-route="home">Ana Sayfa</a></li>
+          <li><a href="#dashboard" data-route="dashboard">Kontrol Paneli</a></li>
+          <li><a href="#water" data-route="water">Su Tasarrufu</a></li>
+          <li><a href="#energy" data-route="energy">Enerji Tasarrufu</a></li>
+          <li><a href="#tasks" data-route="tasks">Günlük Görevler</a></li>
+          <li><a href="#info" data-route="info">Bilgi Merkezi</a></li>
+          <li><a href="#settings" data-route="settings">Ayarlar</a></li>
+        </ul>
+      </nav>
+
+      <div class="header-actions">
+        <button type="button" id="themeToggle" class="icon-btn" aria-label="Koyu temaya geç" aria-pressed="false">
+          <svg class="icon icon-stroke" aria-hidden="true"><use href="#i-moon"/></svg>
+        </button>
+        <button type="button" id="menuToggle" class="icon-btn menu-toggle" aria-label="Menüyü aç" aria-expanded="false" aria-controls="mainNav">
+          <svg class="icon icon-stroke" aria-hidden="true"><use href="#i-menu"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div id="storageBanner" class="banner" role="alert" hidden></div>
+
+  <main id="main" tabindex="-1">
+
+    <!-- ===================== ANA SAYFA ===================== -->
+    <section id="view-home" class="view" data-title="Ana Sayfa" hidden>
+      <div class="hero">
+        <div class="container hero-inner">
+          <div class="hero-text">
+            <p class="eyebrow">Ücretsiz • Hesapsız • Verilerin cihazında</p>
+            <h1 id="homeTitle" tabindex="-1">Daha az tüket. Daha bilinçli yaşa.</h1>
+            <p class="lead">Günlük alışkanlıklarını takip et, tasarruf hedeflerini belirle ve daha sürdürülebilir bir yaşam için küçük adımlar at.</p>
+            <div class="btn-row">
+              <a class="btn btn-primary" href="#dashboard">Tasarruf takibine başla</a>
+              <a class="btn btn-ghost" href="#how">Nasıl çalışır?</a>
+            </div>
+          </div>
+          <div class="hero-art" aria-hidden="true">
+            <svg viewBox="0 0 320 320" class="hero-svg" focusable="false">
+              <circle cx="160" cy="160" r="140" class="art-bg"/>
+              <path class="art-drop" d="M160 54c-38 44-58 76-58 104a58 58 0 0 0 116 0c0-28-20-60-58-104z"/>
+              <path class="art-leaf" d="M160 262V150M160 204l38-38M160 184l-30-30" fill="none" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="art-bolt" d="M236 92l-28 44h20l-8 38 34-50h-21z"/>
+              <circle cx="84" cy="236" r="9" class="art-dot"/><circle cx="246" cy="248" r="6" class="art-dot"/><circle cx="70" cy="110" r="5" class="art-dot"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+
+      <div class="container">
+        <section id="how" class="section" aria-labelledby="howTitle">
+          <h2 id="howTitle">Nasıl çalışır?</h2>
+          <ol class="steps">
+            <li class="card step"><span class="step-no" aria-hidden="true">1</span><h3>Kaydet</h3><p>Su ve elektrik kullanımını kendi ölçümlerinle ya da tahminlerinle ekle. Tahminlerin kesin ölçüm olmadığı açıkça işaretlenir.</p></li>
+            <li class="card step"><span class="step-no" aria-hidden="true">2</span><h3>Hedef belirle</h3><p>Günlük ve haftalık sınırlarını kendin seç. Hedefler, temel ihtiyaçlarını karşılayacak şekilde belirlenmelidir.</p></li>
+            <li class="card step"><span class="step-no" aria-hidden="true">3</span><h3>Takip et ve öğren</h3><p>Kontrol panelinde kendi kayıtlarından oluşan özetleri gör, günlük görevleri tamamla, Bilgi Merkezi'nden ipuçları al.</p></li>
+          </ol>
+        </section>
+
+        <section class="section" aria-labelledby="featTitle">
+          <h2 id="featTitle">Neler yapabilirsin?</h2>
+          <div class="grid grid-3">
+            <article class="card feature">
+              <svg class="icon icon-stroke feat-icon" aria-hidden="true"><use href="#i-water"/></svg>
+              <h3>Su takibi</h3>
+              <p>Duş, bulaşık, sulama gibi kullanımları litre veya metreküp olarak kaydet; toplamları gör.</p>
+              <a class="text-link" href="#water">Su modülüne git</a>
+            </article>
+            <article class="card feature">
+              <svg class="icon icon-stroke feat-icon" aria-hidden="true"><use href="#i-bolt"/></svg>
+              <h3>Enerji takibi</h3>
+              <p>Elektrik tüketimini kWh olarak kaydet, günlük ve haftalık hedeflerinle karşılaştır.</p>
+              <a class="text-link" href="#energy">Enerji modülüne git</a>
+            </article>
+            <article class="card feature">
+              <svg class="icon icon-stroke feat-icon" aria-hidden="true"><use href="#i-target"/></svg>
+              <h3>Günlük görevler</h3>
+              <p>Küçük çevre dostu alışkanlıkları tamamla, haftalık görev hedefini yakala.</p>
+              <a class="text-link" href="#tasks">Görevlere git</a>
+            </article>
+          </div>
+        </section>
+
+        <section class="section privacy-strip card" aria-labelledby="privTitle">
+          <svg class="icon icon-stroke feat-icon" aria-hidden="true"><use href="#i-lock"/></svg>
+          <div>
+            <h2 id="privTitle">Verilerin sende kalır</h2>
+            <p>EcoTrack hesap, reklam veya izleme kullanmaz. Kayıtların yalnızca bu tarayıcıda (localStorage) saklanır. Tarayıcı verilerini temizlersen kayıtların silinebilir; başka bir cihaza otomatik aktarılmaz. İstediğin zaman Ayarlar'dan yedek alabilirsin.</p>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===================== KONTROL PANELİ ===================== -->
+    <section id="view-dashboard" class="view" data-title="Kontrol Paneli" hidden>
+      <div class="container">
+        <header class="page-head">
+          <h1 id="dashboardTitle" tabindex="-1">Kontrol Paneli</h1>
+          <p class="muted">Bu sayfadaki tüm değerler senin kendi kayıtlarından hesaplanır.</p>
+        </header>
+
+        <div id="dashEmpty" class="card empty-state" hidden>
+          <svg class="icon icon-stroke empty-icon" aria-hidden="true"><use href="#i-leaf"/></svg>
+          <h2>Henüz kaydın yok</h2>
+          <p>Kontrol panelin, eklediğin kayıtlarla ve tamamladığın görevlerle dolacak. Örnek veri göstermiyoruz; yalnızca senin verilerin görünür.</p>
+          <div class="btn-row center">
+            <a class="btn btn-primary" href="#water">İlk kaydını ekle: Su</a>
+            <a class="btn btn-secondary" href="#energy">İlk kaydını ekle: Enerji</a>
+            <a class="btn btn-ghost" href="#tasks">Görevlere bak</a>
+          </div>
+        </div>
+
+        <div id="dashContent" hidden>
+          <div class="grid grid-3 stats">
+            <article class="card stat">
+              <h2 class="stat-label"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-water"/></svg> Bugünkü su kaydı</h2>
+              <p class="stat-value" id="dashWaterToday">—</p>
+              <p class="muted small" id="dashWaterTodayNote"></p>
+            </article>
+            <article class="card stat">
+              <h2 class="stat-label"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-bolt"/></svg> Bugünkü enerji kaydı</h2>
+              <p class="stat-value" id="dashEnergyToday">—</p>
+              <p class="muted small" id="dashEnergyTodayNote"></p>
+            </article>
+            <article class="card stat">
+              <h2 class="stat-label"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-target"/></svg> Bugünkü görevler</h2>
+              <p class="stat-value" id="dashTasksToday">—</p>
+              <p class="muted small" id="dashTasksTodayNote"></p>
+            </article>
+          </div>
+
+          <section class="card section-card" aria-labelledby="progTitle">
+            <h2 id="progTitle">Hedef ilerlemesi</h2>
+            <div id="dashProgress" class="progress-list"></div>
+          </section>
+
+          <div class="grid grid-2">
+            <section class="card section-card" aria-labelledby="chartWaterTitle">
+              <h2 id="chartWaterTitle">Su: son 7 gün</h2>
+              <div id="chartWater" class="chart"></div>
+              <p id="waterCompare" class="muted small"></p>
+            </section>
+            <section class="card section-card" aria-labelledby="chartEnergyTitle">
+              <h2 id="chartEnergyTitle">Enerji: son 7 gün</h2>
+              <div id="chartEnergy" class="chart"></div>
+              <p id="energyCompare" class="muted small"></p>
+            </section>
+          </div>
+
+          <section class="card section-card" aria-labelledby="recentTitle">
+            <h2 id="recentTitle">Son eklenen kayıtlar</h2>
+            <ul id="recentList" class="record-list"></ul>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== SU ===================== -->
+    <section id="view-water" class="view" data-title="Su Tasarrufu" hidden>
+      <div class="container">
+        <header class="page-head">
+          <h1 id="waterTitle" tabindex="-1">Su Tasarrufu</h1>
+          <p class="muted">Su kullanımını kaydet, hedefini belirle ve toplamlarını izle.</p>
+        </header>
+
+        <div class="grid grid-3 stats">
+          <article class="card stat"><h2 class="stat-label">Bugün</h2><p class="stat-value" id="waterToday">—</p></article>
+          <article class="card stat"><h2 class="stat-label">Bu hafta (Pzt–Paz)</h2><p class="stat-value" id="waterWeek">—</p></article>
+          <article class="card stat"><h2 class="stat-label">Toplam kayıt</h2><p class="stat-value" id="waterCount">0</p></article>
+        </div>
+
+        <div class="grid grid-2 module-grid">
+          <section class="card section-card" aria-labelledby="waterFormTitle">
+            <h2 id="waterFormTitle">Yeni su kaydı</h2>
+            <form id="waterForm" novalidate>
+              <div class="field">
+                <label for="waterDate">Tarih</label>
+                <input type="date" id="waterDate" required aria-describedby="waterDateError">
+                <p class="field-error" id="waterDateError" role="alert"></p>
+              </div>
+              <div class="field">
+                <label for="waterType">Kullanım türü</label>
+                <select id="waterType" required aria-describedby="waterTypeError">
+                  <option value="">Seçiniz…</option>
+                  <option>Duş</option>
+                  <option>Diş fırçalama / el yıkama</option>
+                  <option>Bulaşık</option>
+                  <option>Çamaşır</option>
+                  <option>Bahçe / sulama</option>
+                  <option>Temizlik</option>
+                  <option>İçme ve yemek</option>
+                  <option>Diğer</option>
+                </select>
+                <p class="field-error" id="waterTypeError" role="alert"></p>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="waterAmount">Miktar</label>
+                  <input type="text" inputmode="decimal" id="waterAmount" autocomplete="off" required aria-describedby="waterAmountHelp waterAmountError" placeholder="Örn. 45">
+                  <p class="field-error" id="waterAmountError" role="alert"></p>
+                </div>
+                <div class="field">
+                  <label for="waterUnit">Birim</label>
+                  <select id="waterUnit">
+                    <option value="L">Litre (L)</option>
+                    <option value="m3">Metreküp (m³)</option>
+                  </select>
+                </div>
+              </div>
+              <p class="help" id="waterAmountHelp">Tam miktarı bilmiyorsan tahmin girebilirsin; bunu aşağıdan işaretle. 1 m³ = 1000 L.</p>
+              <div class="field check">
+                <input type="checkbox" id="waterEstimated">
+                <label for="waterEstimated">Bu değer bir tahmin (kesin ölçüm değil)</label>
+              </div>
+              <div class="field">
+                <label for="waterNote">Açıklama (isteğe bağlı)</label>
+                <input type="text" id="waterNote" maxlength="200" autocomplete="off" aria-describedby="waterNoteError">
+                <p class="field-error" id="waterNoteError" role="alert"></p>
+              </div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary" id="waterSubmit">Kaydı ekle</button>
+                <button type="button" class="btn btn-ghost" id="waterCancel" hidden>Düzenlemeyi iptal et</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card section-card" aria-labelledby="waterGoalTitle">
+            <h2 id="waterGoalTitle">Hedeflerim</h2>
+            <form id="waterGoalForm" novalidate>
+              <div class="field-row">
+                <div class="field">
+                  <label for="waterGoalDaily">Günlük üst sınır (L)</label>
+                  <input type="text" inputmode="decimal" id="waterGoalDaily" autocomplete="off" aria-describedby="waterGoalError">
+                </div>
+                <div class="field">
+                  <label for="waterGoalWeekly">Haftalık üst sınır (L)</label>
+                  <input type="text" inputmode="decimal" id="waterGoalWeekly" autocomplete="off" aria-describedby="waterGoalError">
+                </div>
+              </div>
+              <p class="field-error" id="waterGoalError" role="alert"></p>
+              <p class="help">Hedef bir üst sınırdır. Amaç, ihtiyacından az su kullanmak değil; gereksiz kullanımı azaltmaktır. Hedefi boş bırakırsan kaldırılır.</p>
+              <button type="submit" class="btn btn-secondary">Hedefleri kaydet</button>
+            </form>
+            <div id="waterGoalStatus" class="progress-list"></div>
+          </section>
+        </div>
+
+        <section class="card section-card" aria-labelledby="waterListTitle">
+          <h2 id="waterListTitle">Kayıtlarım</h2>
+          <p id="waterEmpty" class="muted">Henüz su kaydı yok. Yukarıdaki formdan ilk kaydını ekleyebilirsin.</p>
+          <ul id="waterList" class="record-list"></ul>
+          <button type="button" class="btn btn-ghost" id="waterMore" hidden>Daha fazla göster</button>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===================== ENERJİ ===================== -->
+    <section id="view-energy" class="view" data-title="Enerji Tasarrufu" hidden>
+      <div class="container">
+        <header class="page-head">
+          <h1 id="energyTitle" tabindex="-1">Enerji Tasarrufu</h1>
+          <p class="muted">Elektrik tüketimini kWh olarak kaydet ve hedeflerinle karşılaştır.</p>
+        </header>
+
+        <div class="grid grid-3 stats">
+          <article class="card stat"><h2 class="stat-label">Bugün</h2><p class="stat-value" id="energyToday">—</p></article>
+          <article class="card stat"><h2 class="stat-label">Bu hafta (Pzt–Paz)</h2><p class="stat-value" id="energyWeek">—</p></article>
+          <article class="card stat"><h2 class="stat-label">Toplam kayıt</h2><p class="stat-value" id="energyCount">0</p></article>
+        </div>
+
+        <div class="grid grid-2 module-grid">
+          <section class="card section-card" aria-labelledby="energyFormTitle">
+            <h2 id="energyFormTitle">Yeni enerji kaydı</h2>
+            <form id="energyForm" novalidate>
+              <div class="field">
+                <label for="energyDate">Tarih</label>
+                <input type="date" id="energyDate" required aria-describedby="energyDateError">
+                <p class="field-error" id="energyDateError" role="alert"></p>
+              </div>
+              <div class="field">
+                <label for="energyType">Kullanım türü</label>
+                <select id="energyType" required aria-describedby="energyTypeError">
+                  <option value="">Seçiniz…</option>
+                  <option>Sayaç / fatura okuması</option>
+                  <option>Aydınlatma</option>
+                  <option>Isıtma / soğutma</option>
+                  <option>Beyaz eşya</option>
+                  <option>Bilgisayar / elektronik</option>
+                  <option>Diğer</option>
+                </select>
+                <p class="field-error" id="energyTypeError" role="alert"></p>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label for="energyAmount">Miktar</label>
+                  <input type="text" inputmode="decimal" id="energyAmount" autocomplete="off" required aria-describedby="energyAmountHelp energyAmountError" placeholder="Örn. 4,5">
+                  <p class="field-error" id="energyAmountError" role="alert"></p>
+                </div>
+                <div class="field">
+                  <label for="energyUnit">Birim</label>
+                  <input type="text" id="energyUnit" value="kWh" readonly aria-readonly="true">
+                </div>
+              </div>
+              <p class="help" id="energyAmountHelp">Sayaç veya faturandaki kWh değerini gir. Bilmiyorsan tahmin girebilirsin; bunu işaretle.</p>
+              <div class="field check">
+                <input type="checkbox" id="energyEstimated">
+                <label for="energyEstimated">Bu değer bir tahmin (kesin ölçüm değil)</label>
+              </div>
+              <div class="field">
+                <label for="energyNote">Açıklama (isteğe bağlı)</label>
+                <input type="text" id="energyNote" maxlength="200" autocomplete="off" aria-describedby="energyNoteError">
+                <p class="field-error" id="energyNoteError" role="alert"></p>
+              </div>
+              <div class="btn-row">
+                <button type="submit" class="btn btn-primary" id="energySubmit">Kaydı ekle</button>
+                <button type="button" class="btn btn-ghost" id="energyCancel" hidden>Düzenlemeyi iptal et</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="card section-card" aria-labelledby="energyGoalTitle">
+            <h2 id="energyGoalTitle">Hedeflerim</h2>
+            <form id="energyGoalForm" novalidate>
+              <div class="field-row">
+                <div class="field">
+                  <label for="energyGoalDaily">Günlük üst sınır (kWh)</label>
+                  <input type="text" inputmode="decimal" id="energyGoalDaily" autocomplete="off" aria-describedby="energyGoalError">
+                </div>
+                <div class="field">
+                  <label for="energyGoalWeekly">Haftalık üst sınır (kWh)</label>
+                  <input type="text" inputmode="decimal" id="energyGoalWeekly" autocomplete="off" aria-describedby="energyGoalError">
+                </div>
+              </div>
+              <p class="field-error" id="energyGoalError" role="alert"></p>
+              <p class="help">Hedef bir üst sınırdır. Isınma, aydınlatma gibi temel ihtiyaçlarını karşılamak her zaman önceliklidir. Hedefi boş bırakırsan kaldırılır.</p>
+              <button type="submit" class="btn btn-secondary">Hedefleri kaydet</button>
+            </form>
+            <div id="energyGoalStatus" class="progress-list"></div>
+          </section>
+        </div>
+
+        <section class="card section-card" aria-labelledby="energyListTitle">
+          <h2 id="energyListTitle">Kayıtlarım</h2>
+          <p id="energyEmpty" class="muted">Henüz enerji kaydı yok. Yukarıdaki formdan ilk kaydını ekleyebilirsin.</p>
+          <ul id="energyList" class="record-list"></ul>
+          <button type="button" class="btn btn-ghost" id="energyMore" hidden>Daha fazla göster</button>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===================== GÖREVLER ===================== -->
+    <section id="view-tasks" class="view" data-title="Günlük Görevler" hidden>
+      <div class="container">
+        <header class="page-head">
+          <h1 id="tasksTitle" tabindex="-1">Günlük Görevler</h1>
+          <p class="muted">Bugün hangi küçük adımları attığını işaretle. Görevler her gün yeniden başlar.</p>
+        </header>
+
+        <div class="grid grid-2 module-grid">
+          <section class="card section-card" aria-labelledby="taskSumTitle">
+            <h2 id="taskSumTitle">Bugünkü ilerleme</h2>
+            <div id="taskProgress" class="progress-list"></div>
+            <p class="small muted" id="taskPoints"></p>
+            <p class="help">Puanlar yalnızca oyunlaştırma amaçlıdır; gerçek bir su veya enerji tasarrufu ölçümü değildir.</p>
+          </section>
+          <section class="card section-card" aria-labelledby="taskGoalTitle">
+            <h2 id="taskGoalTitle">Haftalık görev hedefi</h2>
+            <form id="taskGoalForm" novalidate>
+              <div class="field">
+                <label for="taskGoalInput">Bu hafta tamamlamak istediğin görev sayısı</label>
+                <input type="text" inputmode="numeric" id="taskGoalInput" autocomplete="off" aria-describedby="taskGoalError">
+                <p class="field-error" id="taskGoalError" role="alert"></p>
+              </div>
+              <button type="submit" class="btn btn-secondary">Hedefi kaydet</button>
+            </form>
+            <div id="taskWeekly" class="progress-list"></div>
+          </section>
+        </div>
+
+        <section class="card section-card" aria-labelledby="taskListTitle">
+          <h2 id="taskListTitle">Görev listesi</h2>
+          <div class="filters" role="group" aria-label="Kategoriye göre filtrele" id="taskFilters">
+            <button type="button" class="chip" data-filter="all" aria-pressed="true">Tümü</button>
+            <button type="button" class="chip" data-filter="su" aria-pressed="false">Su</button>
+            <button type="button" class="chip" data-filter="enerji" aria-pressed="false">Enerji</button>
+            <button type="button" class="chip" data-filter="atik" aria-pressed="false">Atık</button>
+            <button type="button" class="chip" data-filter="ulasim" aria-pressed="false">Ulaşım</button>
+          </div>
+          <ul id="taskList" class="task-list"></ul>
+        </section>
+      </div>
+    </section>
+
+    <!-- ===================== BİLGİ MERKEZİ ===================== -->
+    <section id="view-info" class="view" data-title="Bilgi Merkezi" hidden>
+      <div class="container">
+        <header class="page-head">
+          <h1 id="infoTitle" tabindex="-1">Bilgi Merkezi</h1>
+          <p class="muted">Günlük hayatta uygulayabileceğin kısa ve pratik öneriler. Bu sayfada istatistik veya sayısal iddia yer almaz; yalnızca genel, uygulanabilir ipuçları vardır.</p>
+        </header>
+        <div class="grid grid-2" id="infoGrid">
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-water"/></svg> Evde su tasarrufu</h2>
+            <p>Su kullanımının büyük bölümü banyo, mutfak ve temizlikte gerçekleşir. Musluk ve tesisattaki damlatan yerleri onarmak, bilinçli kullanım alışkanlıklarıyla birlikte gereksiz su kaybını azaltır.</p>
+            <ul>
+              <li>Diş fırçalarken ve sabunlanırken musluğu kapat.</li>
+              <li>Çamaşır ve bulaşık makinesini dolu çalıştır.</li>
+              <li>Damlatan muslukları ve sızıntıları en kısa sürede tamir ettir.</li>
+              <li>Bahçeyi serin saatlerde sula; yağmur suyunu biriktirmeyi düşün.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Evdeki muslukları kontrol et ve damlatan varsa bir yetişkine haber ver.</p>
+          </article>
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-bolt"/></svg> Evde enerji verimliliği</h2>
+            <p>Elektrik tüketimini azaltmak için büyük yatırımlar gerekmez. Kullanılmayan cihazları kapatmak ve verimli ürünleri tercih etmek iyi bir başlangıçtır.</p>
+            <ul>
+              <li>Odadan çıkarken ışıkları kapat; mümkünse gün ışığından yararlan.</li>
+              <li>Beklemede çalışan cihazları (şarj aleti, TV vb.) prizden çıkar veya akıllı uzatma kablosu kullan.</li>
+              <li>Yeni cihaz alırken enerji etiketine bak.</li>
+              <li>Buzdolabı kapağını gereksiz yere açık tutma.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Uyumadan önce kullanılmayan elektronik cihazları kapat.</p>
+          </article>
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-recycle"/></svg> Atıkların azaltılması ve geri dönüşüm</h2>
+            <p>En iyi atık, hiç oluşmayan atıktır. Önce azalt, sonra yeniden kullan, en sonunda geri dönüştür.</p>
+            <ul>
+              <li>Kâğıt, plastik, cam ve metali ayrı biriktir; yerel belediyenin ayrıştırma kurallarını öğren.</li>
+              <li>Geri dönüştüreceğin kapları kabaca durulayıp kurulayarak ayır.</li>
+              <li>Eski eşyaları atmadan önce tamir etmeyi, ikinci ele vermeyi veya bağışlamayı düşün.</li>
+              <li>Yemek artıklarını azaltmak için alışverişi planla.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Evde bir kâğıt ve plastik biriktirme kutusu hazırla.</p>
+          </article>
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-leaf"/></svg> Tek kullanımlık plastiklerin azaltılması</h2>
+            <p>Poşet, pipet, şişe ve kaplar gibi tek kullanımlık ürünlerin yerine tekrar kullanılabilir alternatifler seçmek atık miktarını azaltır.</p>
+            <ul>
+              <li>Yanına bez torba ve tekrar kullanılabilir su şişesi al.</li>
+              <li>Mümkün olduğunda ambalajsız veya az ambalajlı ürünleri seç.</li>
+              <li>Okulda ve evde kendi yemek kabını kullan.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Okula tekrar doldurulabilir bir su şişesi götür.</p>
+          </article>
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-walk"/></svg> Sürdürülebilir ulaşım</h2>
+            <p>Kısa mesafelerde yürümek veya bisiklet kullanmak hem sağlığına hem çevreye iyi gelir. Uzun mesafelerde toplu taşıma ya da ortak yolculuk bir seçenek olabilir.</p>
+            <ul>
+              <li>Yakın mesafeleri yürüyerek ya da bisikletle gitmeyi dene.</li>
+              <li>Mümkünse toplu taşımayı tercih et.</li>
+              <li>Aile veya arkadaşlarla ortak yolculuk planla.</li>
+              <li>Bisiklet sürerken kask kullan ve trafik kurallarına uy.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Bu hafta bir kısa yolculuğunu yürüyerek yap.</p>
+          </article>
+          <article class="card info-card">
+            <h2><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-target"/></svg> Çevre dostu günlük alışkanlıklar</h2>
+            <p>Küçük alışkanlıklar zamanla tutarlı bir yaşam tarzına dönüşür. Hepsini birden değil, birer birer eklemek daha kalıcıdır.</p>
+            <ul>
+              <li>Bir hafta boyunca tek bir alışkanlığa odaklan.</li>
+              <li>Arkadaşlarınla ve ailenle ipuçlarını paylaş.</li>
+              <li>Gereksiz ürün satın almadan önce bir gün bekle.</li>
+              <li>Kayıtlarını düzenli tutarak ilerlemeni kendin gözlemle.</li>
+            </ul>
+            <p class="tip"><strong>Bugün deneyebileceğin öneri:</strong> Görevler sayfasından bugün tamamlayacağın tek bir görevi seç.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== AYARLAR ===================== -->
+    <section id="view-settings" class="view" data-title="Ayarlar" hidden>
+      <div class="container narrow">
+        <header class="page-head">
+          <h1 id="settingsTitle" tabindex="-1">Ayarlar</h1>
+        </header>
+
+        <section class="card section-card" aria-labelledby="themeSetTitle">
+          <h2 id="themeSetTitle">Tema</h2>
+          <fieldset class="radio-group" id="themeForm">
+            <legend class="visually-hidden">Tema seçimi</legend>
+            <label class="radio"><input type="radio" name="theme" value="light"> Açık</label>
+            <label class="radio"><input type="radio" name="theme" value="dark"> Koyu</label>
+            <label class="radio"><input type="radio" name="theme" value="system"> Sistem ayarını kullan</label>
+          </fieldset>
+          <p class="help">Tercihin bu tarayıcıda hatırlanır.</p>
+        </section>
+
+        <section class="card section-card" aria-labelledby="dataTitle">
+          <h2 id="dataTitle">Verilerim</h2>
+          <p id="storageInfo" class="muted"></p>
+          <div class="btn-row">
+            <button type="button" class="btn btn-secondary" id="exportBtn"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-download"/></svg> Verilerimi dışa aktar (JSON)</button>
+            <button type="button" class="btn btn-secondary" id="importBtn"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-upload"/></svg> Yedekten içe aktar</button>
+            <input type="file" id="importInput" accept="application/json,.json" hidden>
+          </div>
+          <p class="help">İçe aktarma mevcut kayıtlarının yerine geçer; işlemden önce onay istenir. Geçersiz kayıtlar atlanır.</p>
+          <p id="importResult" class="status-line" role="status"></p>
+          <hr>
+          <h3>Tehlikeli bölge</h3>
+          <p class="muted">Bu cihazdaki tüm kayıtlar, hedefler ve görev durumları kalıcı olarak silinir.</p>
+          <button type="button" class="btn btn-danger" id="deleteAllBtn"><svg class="icon icon-stroke" aria-hidden="true"><use href="#i-trash"/></svg> Tüm verilerimi sil</button>
+        </section>
+
+        <section class="card section-card" aria-labelledby="privSetTitle">
+          <h2 id="privSetTitle">Gizlilik</h2>
+          <ul class="plain-list">
+            <li>EcoTrack bir hesap, kayıt sistemi veya sunucu kullanmaz.</li>
+            <li>Kayıtların yalnızca bu tarayıcıda, bu cihazda saklanır (localStorage).</li>
+            <li>Tarayıcı verilerini veya site verilerini temizlersen kayıtların silinebilir. Önemli verilerin için düzenli yedek al.</li>
+            <li>Başka cihazlarla otomatik senkronizasyon yoktur; yedeği JSON dosyasıyla taşıyabilirsin.</li>
+            <li>Analiz, reklam, izleme veya konum verisi toplanmaz.</li>
+          </ul>
+        </section>
+
+        <section class="card section-card" aria-labelledby="aboutTitle">
+          <h2 id="aboutTitle">Uygulama hakkında</h2>
+          <p>EcoTrack, öğrencilerin, ailelerin ve çevreye duyarlı bireylerin su ve elektrik kullanımını bilinçli yönetmesine yardımcı olan ücretsiz bir web uygulamasıdır. Sürüm 1.0.</p>
+          <p class="muted small">Uygulamadaki değerler yalnızca senin girdiğin kayıtlardan hesaplanır. Tahmini girişler kesin ölçüm değildir ve çevresel etki hesabı yapılmaz.</p>
+        </section>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <p>EcoTrack — Verilerin yalnızca bu tarayıcıda saklanır. Daha az tüket, daha bilinçli yaşa.</p>
+    </div>
+  </footer>
+
+  <!-- Bildirimler -->
+  <div id="toastRegion" class="toast-region" role="status" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- Onay penceresi -->
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle" aria-describedby="confirmMessage">
+    <h2 id="confirmTitle">Emin misin?</h2>
+    <p id="confirmMessage"></p>
+    <div class="btn-row">
+      <button type="button" class="btn btn-ghost" id="confirmCancel">Vazgeç</button>
+      <button type="button" class="btn btn-danger" id="confirmOk">Onayla</button>
+    </div>
+  </dialog>
+
+  <noscript><p class="banner">EcoTrack'in çalışması için JavaScript gerekir.</p></noscript>
+  <script src="app.js"></script>
+</body>
+</html>
